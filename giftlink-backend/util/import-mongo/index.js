@@ -1,50 +1,43 @@
 require('dotenv').config();
-const MongoClient = require('mongodb').MongoClient;
+const { MongoClient } = require('mongodb');
 const fs = require('fs');
+const path = require('path');
 
-// MongoDB connection URL with authentication options
-let url = `${process.env.MONGO_URL}`;
-let filename = `${__dirname}/gifts.json`;
-const dbName = 'giftdb';
-const collectionName = 'gifts';
-
-// notice you have to load the array of gifts into the data object
+// Load JSON data
+const filename = path.join(__dirname, 'gifts.json');
 const data = JSON.parse(fs.readFileSync(filename, 'utf8')).docs;
 
-// connect to database and insert data into the collection
+// MongoDB configuration
+const url = process.env.MONGO_URL; // Should already include the DB name in the URI
+const collectionName = 'gifts';
+
 async function loadData() {
-    const client = new MongoClient(url);
+  const client = new MongoClient(url);
 
-    try {
-        // Connect to the MongoDB client
-        await client.connect();
-        console.log("Connected successfully to server");
+  try {
+    await client.connect();
+    console.log('✅ Connected successfully to MongoDB Atlas');
 
-        // database will be created if it does not exist
-        const db = client.db(dbName);
+    // Automatically picks DB from URL if included
+    const db = client.db(); 
+    const collection = db.collection(collectionName);
 
-        // collection will be created if it does not exist
-        const collection = db.collection(collectionName);
-        let cursor = await collection.find({});
-        let documents = await cursor.toArray();
+    const existingDocs = await collection.find({}).toArray();
 
-        if(documents.length == 0) {
-            // Insert data into the collection
-            const insertResult = await collection.insertMany(data);
-            console.log('Inserted documents:', insertResult.insertedCount);
-        } else {
-            console.log("Gifts already exists in DB")
-        }
-    } catch (err) {
-        console.error(err);
-    } finally {
-        // Close the connection
-        await client.close();
+    if (existingDocs.length === 0) {
+      const result = await collection.insertMany(data);
+      console.log(`📦 Inserted ${result.insertedCount} documents into '${collectionName}' collection.`);
+    } else {
+      console.log(`ℹ️ '${collectionName}' collection already contains data. No new inserts.`);
     }
+  } catch (error) {
+    console.error('❌ Error:', error.message);
+  } finally {
+    await client.close();
+    console.log('🔌 MongoDB connection closed.');
+  }
 }
 
 loadData();
 
-module.exports = {
-    loadData,
-  };
+module.exports = { loadData };
