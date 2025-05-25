@@ -15,6 +15,7 @@ router.get('/', async (req, res) => {
         const gifts = await collection.find({}).toArray();
 
         // Task 4: return the gifts using the res.json method
+      
         res.json(gifts);
     } catch (e) {
         console.error('Error fetching gifts:', e);
@@ -39,7 +40,7 @@ router.get('/:id', async (req, res) => {
         if (!gift) {
             return res.status(404).send('Gift not found');
         }
-
+        console.log(gift);
         res.json(gift);
     } catch (e) {
         console.error('Error fetching gift:', e);
