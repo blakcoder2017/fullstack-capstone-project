@@ -1,15 +1,74 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './LoginPage.css';
+import { urlConfig } from '../../config';
+import { useAppContext } from '../../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [incorrect, setIncorrect] = useState('');
 
-    const handleLogin = async () => {
-        console.log("Inside handleLogin");
-        console.log("Email:", email);
-        console.log("Password:", password);
+    const navigate = useNavigate();
+    const bearerToken = sessionStorage.getItem('bearer-token');
+    const { setIsLoggedIn } = useAppContext();
+
+    useEffect(() => {
+        if (sessionStorage.getItem('auth-token')) {
+            navigate('/app');
+        }
+    }, [navigate]);
+
+const handleLogin = async () => {
+  try {
+    const response = await fetch(`${urlConfig}/api/auth/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': bearerToken ? `Bearer ${bearerToken}` : ''
+      },
+      body: JSON.stringify({
+        email: email,
+        password: password,
+      })
+    });
+
+    // Task 1: Access data coming from fetch API
+    const json = await response.json();
+
+    if (json.authtoken) {
+      // Task 2: Set user details
+      sessionStorage.setItem('auth-token', json.authtoken);
+      sessionStorage.setItem('name', json.userName);
+      sessionStorage.setItem('email', json.userEmail);
+
+      // Task 3: Set user state to logged in
+      setIsLoggedIn(true);
+
+      // Task 4: Navigate to MainPage
+      navigate('/app');
+
+      // Clear inputs and error (optional cleanup)
+      setEmail('');
+      setPassword('');
+      setIncorrect('');
+    } else {
+      // Task 5: Clear input and set error message
+      setEmail('');
+      setPassword('');
+      setIncorrect("Wrong password. Try again.");
+
+      // Clear error message after 2 seconds (optional but recommended)
+      setTimeout(() => {
+        setIncorrect('');
+      }, 2000);
     }
+  } catch (e) {
+    console.error("Error fetching details: " + e.message);
+    setIncorrect('Something went wrong. Please try again later.');
+  }
+};
+
 
     return (
         <div className="container mt-5">
@@ -17,6 +76,12 @@ function LoginPage() {
                 <div className="col-md-6 col-lg-4">
                     <div className="login-card p-4 border rounded">
                         <h2 className="text-center mb-4 font-weight-bold">Login</h2>
+
+                        {incorrect && (
+                            <div className="alert alert-danger text-center" role="alert">
+                                {incorrect}
+                            </div>
+                        )}
 
                         <div className="mb-3">
                             <label htmlFor="email" className="form-label">Email</label>
@@ -53,7 +118,7 @@ function LoginPage() {
                 </div>
             </div>
         </div>
-    )
+    );
 }
 
 export default LoginPage;
